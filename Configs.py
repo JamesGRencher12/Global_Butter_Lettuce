@@ -421,7 +421,14 @@ class Configs(Mapping):
             message = "Sum of wholesaler profile must equal 1"
             logging.error(message)
             raise Exception(message)
-
+        
+        self.cost_per_acre = 5000            # USD per acre of lettuce farming
+        self.cpm_us = 2.73                    # USD cost per mile in the US
+        self.cpm_mexico = 2.36                # USD cost per mile in Mexico
+        self.emission_per_acre = 30         # lbs CO2 per acre. (right now this number is made up)
+        self.emission_per_mile = 3.73333       # lbs CO2 per mile
+        self.water_per_acre = 792,000          # gallons per acre annually. (this needs to be adjusted to account per truck somehow)
+        logging.info("Set fixed cost/environment variables: cost_per_acre=5000, cpm_us=0.6, cpm_mexico=0.4, emission_per_acre=30, emission_per_mile=0.12, water_per_acre=1500")
     # def resetDefault(self):
     #     """
     #     Resets the configurations to their default values
