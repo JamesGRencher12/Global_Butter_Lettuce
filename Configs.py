@@ -115,7 +115,13 @@ class Configs(Mapping):
                  covarianceMatrix=None,
                  historicalReturnRuleOption=3,
                  numTimePeriodsForCalc=5,
-                 riskTolerance=0.5
+                 riskTolerance=0.5,
+                 acreage = 500, #This number is completely made up
+                 miles_mexico = 700,
+                 miles_us = 1360,
+                 border_delay = None,
+                 shipment_size = None,
+                 storage_time = None
                  ):
         self.graphName = 'Kite'  # Cannot change this currently
         self.numAgents = 5  # Cannot change this currently
@@ -260,6 +266,62 @@ class Configs(Mapping):
             message = "Runtime cannot be a value less than 0"
             logging.error(message)
             raise Exception(message)
+        
+        #These are the variables for the global supply chain.
+        self.acreage = acreage
+        logging.info(f"Set acreage to {self.acreage}")
+        if self.acreage is None:
+            logging.warning("Acreage is not set; defaulting to None")
+        elif self.acreage <= 0:
+            message = "Acreage must be a positive number"
+            logging.error(message)
+            raise Exception(message)
+
+        self.miles_mexico = miles_mexico
+        logging.info(f"Set miles_mexico to {self.miles_mexico}")
+        if self.miles_mexico is None:
+            logging.warning("Miles from Mexico to border is not set; defaulting to None")
+        elif self.miles_mexico < 0:
+            message = "Miles from Mexico must be non-negative"
+            logging.error(message)
+            raise Exception(message)
+
+        self.miles_us = miles_us
+        logging.info(f"Set miles_us to {self.miles_us}")
+        if self.miles_us is None:
+            logging.warning("Miles from border to destination is not set; defaulting to None")
+        elif self.miles_us < 0:
+            message = "Miles from US border must be non-negative"
+            logging.error(message)
+            raise Exception(message)
+
+        self.border_delay = border_delay
+        logging.info(f"Set border_delay to {self.border_delay}")
+        if self.border_delay is None:
+            logging.warning("Border delay is not set; defaulting to None")
+        elif self.border_delay < 0:
+            message = "Border delay must be non-negative"
+            logging.error(message)
+            raise Exception(message)
+
+        self.shipment_size = shipment_size
+        logging.info(f"Set shipment_size to {self.shipment_size}")
+        if self.shipment_size is None:
+            logging.warning("Shipment size is not set; defaulting to None")
+        elif self.shipment_size <= 0:
+            message = "Shipment size must be a positive number"
+            logging.error(message)
+            raise Exception(message)
+
+        self.storage_time = storage_time
+        logging.info(f"Set storage_time to {self.storage_time}")
+        if self.storage_time is None:
+            logging.warning("Storage time is not set; defaulting to None")
+        elif self.storage_time < 0:
+            message = "Storage time must be non-negative"
+            logging.error(message)
+            raise Exception(message)
+
 
         self.shipDelayOption = shipDelayOption
         logging.info(f"Set shipDelayOption to {self.shipDelayOption}")
