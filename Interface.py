@@ -36,7 +36,7 @@ def main():
     shipDelayOption = 'Uniform'  # (default = 'Uniform')
     shipDelayList = None  # (required only if shipDelayOption  = 'Varied'; default = None)
     shipDelayValue = 2  # (default = 2)
-    shocks = np.array([[10, 1], [200, -.8]])  # (default = [[50, 1], [250, -.8]]); OR ([[200, 1]]) OR ([[200, -.8]])
+    shocks = np.empty((0,2))         #array([[10, 1], [200, -.8]])  # (default = [[50, 1], [250, -.8]]); OR ([[200, 1]]) OR ([[200, -.8]])
     smoothingValue = 2  # (default = 2)
     # wholesalerProfileOption = 'Optimize'
     wholesalerProfileOption = 'Default'

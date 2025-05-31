@@ -1,0 +1,19 @@
+Experiment_-98
+runTime= 500
+historyTime= 10
+numIterations= 10
+alphaValueList= [0.1, 0.1, 0.05, 0.15, 0.1]
+demandMu= 100
+demandStd= 1
+shipDelayList= [2, 2, 2, 2, 2]
+shocks=
+ [[ 10.    1. ]
+ [200.   -0.8]]
+smoothingValue= 2
+wholesalerProfile= [0.5, 0.5]
+covarianceMatrix=
+ [[1 0]
+ [0 1]]
+historicalReturnRuleOption= 2
+numTimePeriodsForCalc= 5
+riskTolerance= 0.5
