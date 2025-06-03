@@ -41,6 +41,12 @@ class ExperimentData(Mapping):
 
         self.averageData = np.zeros((self.numAgents,
                                      self.totalTime), dtype=int)
+        
+        self.averageCostMoney = np.zeros((self.numAgents, self.totalTime), dtype=float)
+        self.averageCostCO2   = np.zeros((self.numAgents, self.totalTime), dtype=float)
+        self.averageCostWater = np.zeros((self.numAgents, self.totalTime), dtype=float)
+
+
 
         saveFolder = os.path.join(rootDir, savePath)
         if not os.path.exists(saveFolder):
@@ -58,20 +64,39 @@ class ExperimentData(Mapping):
 
     def writeCsvData(self, totalTime, timeStart, now):
         """
-
-
-        :return:
+        Write CSV: each row = [Label, val_t0, val_t1, ..., val_tN]
         """
-        xAxis = list(range(timeStart, totalTime))  # Time axis
-        header = np.array(xAxis)
-        writtenData = np.vstack([header, self.averageData[:, timeStart::]]).astype(int)
-        fileName = f"Experiment_{self.experimentNumber}_{now}.csv"
-        key = np.vstack([["Time"], ["Firm 0"], ["Firm 1"], ["Firm 2"], ["Firm 3"], ["Firm 4"]])
-        writtenData = np.hstack([key, writtenData])
 
-        with open(fileName, 'w') as f:
+        # Time header
+        xAxis = list(range(timeStart, totalTime))  # [t0, t1, ..., tN]
+        headerRow = ["Time"] + xAxis
+
+        # Data slices
+        demand = self.averageData[:, timeStart:totalTime]
+        costMoney = self.averageCostMoney[:, timeStart:totalTime]
+        costCO2 = self.averageCostCO2[:, timeStart:totalTime]
+        costWater = self.averageCostWater[:, timeStart:totalTime]
+
+        # Stack and label
+        dataRows = []
+        for i in range(self.numAgents):
+            dataRows.append([f"Firm {i} Demand"] + demand[i].tolist())
+        for i in range(self.numAgents):
+            dataRows.append([f"Firm {i} CostMoney"] + costMoney[i].tolist())
+        for i in range(self.numAgents):
+            dataRows.append([f"Firm {i} CostCO2"] + costCO2[i].tolist())
+        for i in range(self.numAgents):
+            dataRows.append([f"Firm {i} CostWater"] + costWater[i].tolist())
+
+        # Combine all
+        writtenData = [headerRow] + dataRows
+        fileName = f"Experiment_{self.experimentNumber}_{now}.csv"
+
+        # Save
+        with open(fileName, 'w', newline='') as f:
             writer = csv.writer(f)
             writer.writerows(writtenData)
+
 
 
 class ExperimentCharts(Mapping):

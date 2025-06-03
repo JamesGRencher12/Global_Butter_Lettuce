@@ -263,6 +263,12 @@ class Firm:
 
         # Remaining initializations are alphabetized
         self._actualizedDemandArray = np.zeros(self._totalTime, dtype=int)
+        self._actualizedCostMoneyArray = np.zeros(self._totalTime, dtype=float)
+        self._actualizedCostCO2Array   = np.zeros(self._totalTime, dtype=float)
+        self._actualizedCostWaterArray = np.zeros(self._totalTime, dtype=float)
+
+
+
         logging.debug(f"Firm {self._id}, t=SETUP: Established actualizedDemandArray of type "
                       f"{type(self._actualizedDemandArray)} and size {self._totalTime} ")
 

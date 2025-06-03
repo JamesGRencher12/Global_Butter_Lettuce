@@ -721,7 +721,7 @@ class Simulation:
         """
         self.getData()
         # self.plotData(simNo)
-        return self._demandData
+        return self._demandData, self._costMoneyData, self._costCO2Data, self._costWaterData
 
     def getData(self):
         """
