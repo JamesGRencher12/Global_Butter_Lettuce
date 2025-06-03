@@ -492,6 +492,24 @@ class Firm:
         if self._timePeriod > 0:
             logging.warning("supplierList changed after the simulation has started to run")
 
+    def actualizeCost(self, moneyCost, co2Cost, waterCost):
+        """
+        Records this period’s cost for acreage + trucking.
+
+        :param float moneyCost: total $ cost incurred for this firm at current timeIndex
+        :param float co2Cost:   total lbs CO₂ emitted at this timeIndex
+        :param float waterCost: total gallons H₂O used at this timeIndex
+        """
+        idx = self._timeIndex
+        self._actualizedCostMoneyArray[idx] = moneyCost
+        self._actualizedCostCO2Array[idx]   = co2Cost
+        self._actualizedCostWaterArray[idx] = waterCost
+        logging.debug(
+            f"Firm {self._id}, t={self._timePeriod}, f=actualizeCost(): "
+            f"Money=${moneyCost:.2f}, CO2={co2Cost:.2f} lbs, Water={waterCost:.2f} gal"
+        )
+
+    
     def actualizeDemand(self, amount):
         """
         Records the time period's demand information.
@@ -949,6 +967,11 @@ class Firm:
         # This needs to be updated for the wholesaler class
         # ~~~~~~~~~~~~~~~~
         self._actualizedDemandArray = np.zeros(self._totalTime, dtype=int)
+
+        self._actualizedCostMoneyArray = np.zeros(self._totalTime, dtype=float)
+        self._actualizedCostCO2Array   = np.zeros(self._totalTime, dtype=float)
+        self._actualizedCostWaterArray = np.zeros(self._totalTime, dtype=float)
+
         # alpha not reset
         self._closedCustomerPos = []
         self._closedSupplierPos = []
@@ -1019,7 +1042,13 @@ class Firm:
             return self._ledger
         elif option == 'Demand':
             logging.info(f"Firm {self._id}, t={self._timePeriod}, f=sendData(): Sent demand data to simulation")
-            return self._actualizedDemandArray
+            return self._actualizedDemandArray        
+        elif option == 'CostMoney':
+            return self._actualizedCostMoneyArray
+        elif option == 'CostCO2':
+            return self._actualizedCostCO2Array
+        elif option == 'CostWater':
+            return self._actualizedCostWaterArray
         else:
             message = f"Firm {self._id}, t={self._timePeriod}, f=sendData(): Unknown option chosen."
             logging.error(message)

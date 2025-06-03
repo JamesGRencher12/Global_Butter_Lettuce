@@ -2,7 +2,7 @@ import itertools
 import logging
 import matplotlib.pyplot as plt
 import time
-
+import math 
 import numpy as np
 from numpy import random as rand
 
@@ -231,6 +231,11 @@ class Simulation:
         cls.historyTime = configs.historyTime
         cls.totalTime = cls.runTime + cls.historyTime
         cls.agentList = agentList
+        cls.miles_mexico   = configs.miles_mexico
+        cls.miles_us       = configs.miles_us
+        cls.cpm_mexico     = configs.cpm_mexico
+        cls.cpm_us         = configs.cpm_us
+
 
     def __init__(self):
         #self._id = next(self.idIter)  # Creates a new unique identifier for the simulation
@@ -248,6 +253,9 @@ class Simulation:
         self._demandArray = np.zeros(self.totalTime, dtype=int)
         self._dataSet = []
         self._demandData = []
+
+        self._truckCount = np.zeros(self.totalTime,dtype = int) #The amount of fuel used per mile is also per truck
+        self._transportCost = np.zeros(self.totalTime, dtype = float)
 
     def initializeSim(self, testOption=False):
         """
@@ -452,6 +460,38 @@ class Simulation:
                 newPo = PO(-99, 0, demand, self._timePeriod)
                 newPo.updatePO({'arrivalTime': self._timePeriod})
                 self._activePoList.append(newPo)
+
+                trucks = int(math.ceil(demand / 38))
+                cost_per_truck_money = (self.miles_mexico * self.cpm_mexico) + (self.miles_us * self.cpm_us)
+
+                total_moneyCost = trucks * cost_per_truck_money
+
+                yield_per_acre = 30,000 #An acre of farmland yields 30k lbs of butter lettuce annually.
+                acres_per_truck = 38,000/30,000 #A truck can holod 38k lbs of butter lettuce. (it runs out of space before weight carrying capacity)
+
+                #CO2 cost
+                co2_from_acres = acres_per_truck * 13889.13 #13889.13 is the pounds of CO2 produced by an acre of butter lettuce annually
+                co2_from_travel = (Simulation.miles_mexico + Simulation.miles_us)*6*22.4 #22.4 lbs c02/mile, 6mpg
+
+                total_co2Cost = trucks*(co2_from_acres+co2_from_travel)
+
+                #Water cost
+                water_per_acre = 32,000 
+                water_per_truck = water_per_acre * acres_per_truck
+                total_waterCost = water_per_truck*trucks
+
+
+
+                self._truckCount[self._timeIndex] = trucks
+                self._transportCost[self._timeIndex] = total_moneyCost 
+
+                retailer = self.agentList[0]  # by construction, firm 0 is always the retailer
+                retailer.actualizeCost(
+                    total_moneyCost,
+                    total_co2Cost,
+                    total_waterCost
+                )
+
                 logging.debug("Created a demand PO for current time period %s", self._timePeriod)
                 break  # Only one demand PO created for each time period currently (Changes with multiple retailers)
         toc = time.perf_counter()
@@ -693,6 +733,28 @@ class Simulation:
             demandData = agent.sendData('Demand')
             demandDataList.append(demandData)
         self._demandData = np.array(demandDataList)
+
+        costMoneyList = []
+        for agent in self.agentList:
+            costMoneyData = agent.sendData('CostMoney')
+            costMoneyList.append(costMoneyData)
+        self._costMoneyData = np.array(costMoneyList)
+
+        # 3) Build and store costCO2Data = (numAgents × totalTime)
+        costCO2List = []
+        for agent in self.agentList:
+            costCO2Data = agent.sendData('CostCO2')
+            costCO2List.append(costCO2Data)
+        self._costCO2Data = np.array(costCO2List)
+
+        # 4) Build and store costWaterData = (numAgents × totalTime)
+        costWaterList = []
+        for agent in self.agentList:
+            costWaterData = agent.sendData('CostWater')
+            costWaterList.append(costWaterData)
+        self._costWaterData = np.array(costWaterList)
+
+        return self._demandData, self._costMoneyData, self._costCO2Data, self._costWaterData
 
     def plotData(self, simNo):
         """
