@@ -466,8 +466,8 @@ class Simulation:
 
                 total_moneyCost = trucks * cost_per_truck_money
 
-                yield_per_acre = 30,000 #An acre of farmland yields 30k lbs of butter lettuce annually.
-                acres_per_truck = 38,000/30,000 #A truck can holod 38k lbs of butter lettuce. (it runs out of space before weight carrying capacity)
+                yield_per_acre = 30000 #An acre of farmland yields 30k lbs of butter lettuce annually.
+                acres_per_truck = 38000/30000 #A truck can holod 38k lbs of butter lettuce. (it runs out of space before weight carrying capacity)
 
                 #CO2 cost
                 co2_from_acres = acres_per_truck * 13889.13 #13889.13 is the pounds of CO2 produced by an acre of butter lettuce annually
@@ -476,7 +476,7 @@ class Simulation:
                 total_co2Cost = trucks*(co2_from_acres+co2_from_travel)
 
                 #Water cost
-                water_per_acre = 32,000 
+                water_per_acre = 32000 
                 water_per_truck = water_per_acre * acres_per_truck
                 total_waterCost = water_per_truck*trucks
 

@@ -145,9 +145,11 @@ class Experiment(Mapping):
             costCO2Accumulator   += costCO2Data
             costWaterAccumulator += costWaterData
 
-            data = sim.processData(i)
-            data = np.array(data)
-            self.experimentData.averageData = np.add(self.experimentData.averageData, data)
+            # data = sim.processData(i)
+            # data = np.array(data)
+            # self.experimentData.averageData = np.add(self.experimentData.averageData, data)
+
+
             message = f"Experiment {self.id} Sim {i} running..."
             print(message)
             sim.resetFirms()
