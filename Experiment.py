@@ -121,11 +121,30 @@ class Experiment(Mapping):
 
         :return:
         """
+        
+
+        demandAccumulator     = np.zeros((self.experimentConfigs.numAgents,
+                                          self.experimentConfigs.historyTime + self.experimentConfigs.runTime))
+        costMoneyAccumulator  = np.zeros((self.experimentConfigs.numAgents,
+                                          self.experimentConfigs.historyTime + self.experimentConfigs.runTime))
+        costCO2Accumulator    = np.zeros((self.experimentConfigs.numAgents,
+                                          self.experimentConfigs.historyTime + self.experimentConfigs.runTime))
+        costWaterAccumulator  = np.zeros((self.experimentConfigs.numAgents,
+                                          self.experimentConfigs.historyTime + self.experimentConfigs.runTime))
+        
 
         for i in range(self.experimentConfigs.numIterations):
             sim = Simulation()
             sim.initializeSim(testOption=False)
             sim.runSimulation()
+
+            demandData, costMoneyData, costCO2Data, costWaterData = sim.processData(i)
+
+            demandAccumulator    += demandData
+            costMoneyAccumulator += costMoneyData
+            costCO2Accumulator   += costCO2Data
+            costWaterAccumulator += costWaterData
+
             data = sim.processData(i)
             data = np.array(data)
             self.experimentData.averageData = np.add(self.experimentData.averageData, data)
@@ -133,6 +152,11 @@ class Experiment(Mapping):
             print(message)
             sim.resetFirms()
         self.experimentData.averageData = self.experimentData.averageData / self.experimentConfigs.numIterations
+        self.experimentData.averageCostMoney = costMoneyAccumulator / self.experimentConfigs.numIterations
+        self.experimentData.averageCostCO2   = costCO2Accumulator / self.experimentConfigs.numIterations
+        self.experimentData.averageCostWater = costWaterAccumulator / self.experimentConfigs.numIterations
+
+
         self.createCharts()
         self.experimentData.writeCsvData(self.experimentConfigs.historyTime + self.experimentConfigs.runTime,
                                          self.experimentConfigs.historyTime,
