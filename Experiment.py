@@ -4,6 +4,8 @@ from collections.abc import Mapping
 import itertools
 import numpy as np
 from datetime import datetime
+import matplotlib.pyplot as plt
+
 
 from Configs import Configs
 from Simulation import Simulation
@@ -153,7 +155,7 @@ class Experiment(Mapping):
             message = f"Experiment {self.id} Sim {i} running..."
             print(message)
             sim.resetFirms()
-        self.experimentData.averageData = self.experimentData.averageData / self.experimentConfigs.numIterations
+        self.experimentData.averageData = demandAccumulator / self.experimentConfigs.numIterations
         self.experimentData.averageCostMoney = costMoneyAccumulator / self.experimentConfigs.numIterations
         self.experimentData.averageCostCO2   = costCO2Accumulator / self.experimentConfigs.numIterations
         self.experimentData.averageCostWater = costWaterAccumulator / self.experimentConfigs.numIterations
@@ -164,6 +166,33 @@ class Experiment(Mapping):
                                          self.experimentConfigs.historyTime,
                                          self.now)
         self.writeTxtData()
+
+        data = self.experimentData
+        total_money = np.sum(data.averageCostMoney)
+        total_co2   = np.sum(data.averageCostCO2)
+        total_water = np.sum(data.averageCostWater)
+
+        categories = ['Money ($)', 'CO₂ (lbs)', 'Water (gal)']
+        values     = [total_money, total_co2, total_water]
+
+        plt.figure(figsize=(6,4))
+        bars = plt.bar(categories, values, edgecolor='black')
+        plt.ylabel('Total Cost Across Supply Chain')
+        plt.title('Overall Aggregated Costs')
+
+        for bar in bars:
+            h = bar.get_height()
+            plt.text(
+                bar.get_x() + bar.get_width()/2,
+                h + 0.02 * max(values),
+                f"{h:,.0f}",
+                ha='center',
+                va='bottom'
+            )
+
+        plt.tight_layout()
+        plt.show()
+
 
     def savePackagedData(self):
         """
