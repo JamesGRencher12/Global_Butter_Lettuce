@@ -118,13 +118,6 @@ class Experiment(Mapping):
         pass
 
     def run(self):
-        """
-        Run the experiment
-
-        :return:
-        """
-        
-
         demandAccumulator     = np.zeros((self.experimentConfigs.numAgents,
                                           self.experimentConfigs.historyTime + self.experimentConfigs.runTime))
         costMoneyAccumulator  = np.zeros((self.experimentConfigs.numAgents,
@@ -133,28 +126,54 @@ class Experiment(Mapping):
                                           self.experimentConfigs.historyTime + self.experimentConfigs.runTime))
         costWaterAccumulator  = np.zeros((self.experimentConfigs.numAgents,
                                           self.experimentConfigs.historyTime + self.experimentConfigs.runTime))
-        
+
+        backlogAccumulator   = np.zeros((self.experimentConfigs.numAgents,
+                                          self.experimentConfigs.historyTime + self.experimentConfigs.runTime))
 
         for i in range(self.experimentConfigs.numIterations):
             sim = Simulation()
             sim.initializeSim(testOption=False)
             sim.runSimulation()
 
-            demandData, costMoneyData, costCO2Data, costWaterData = sim.processData(i)
+            demandData, costMoneyData, costCO2Data, costWaterData, backlogData = sim.processData(i)
 
             demandAccumulator    += demandData
             costMoneyAccumulator += costMoneyData
             costCO2Accumulator   += costCO2Data
             costWaterAccumulator += costWaterData
 
+            # ACCUMULATE backlogs into backlogAccumulator
+            backlogAccumulator   += backlogData
+
+            message = f"Experiment {self.id} Sim {i} running..."
+            print(message)
+            sim.resetFirms()
+
+        # Now average everything
+        self.experimentData.averageData      = demandAccumulator    / self.experimentConfigs.numIterations
+        self.experimentData.averageCostMoney = costMoneyAccumulator / self.experimentConfigs.numIterations
+        self.experimentData.averageCostCO2   = costCO2Accumulator   / self.experimentConfigs.numIterations
+        self.experimentData.averageCostWater = costWaterAccumulator / self.experimentConfigs.numIterations
+
+        # *** Set average backlog ***
+        self.experimentData.averageBacklog   = backlogAccumulator   / self.experimentConfigs.numIterations
+
+        self.createCharts()
+        self.experimentData.writeCsvData(self.experimentConfigs.historyTime + self.experimentConfigs.runTime,
+                                         self.experimentConfigs.historyTime,
+                                         self.now)
+        self.writeTxtData()
+
+
+
             # data = sim.processData(i)
             # data = np.array(data)
             # self.experimentData.averageData = np.add(self.experimentData.averageData, data)
 
 
-            message = f"Experiment {self.id} Sim {i} running..."
-            print(message)
-            sim.resetFirms()
+        message = f"Experiment {self.id} Sim {i} running..."
+        print(message)
+        sim.resetFirms()
         self.experimentData.averageData = demandAccumulator / self.experimentConfigs.numIterations
         self.experimentData.averageCostMoney = costMoneyAccumulator / self.experimentConfigs.numIterations
         self.experimentData.averageCostCO2   = costCO2Accumulator / self.experimentConfigs.numIterations

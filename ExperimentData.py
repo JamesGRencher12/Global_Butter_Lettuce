@@ -45,6 +45,8 @@ class ExperimentData(Mapping):
         self.averageCostMoney = np.zeros((self.numAgents, self.totalTime), dtype=float)
         self.averageCostCO2   = np.zeros((self.numAgents, self.totalTime), dtype=float)
         self.averageCostWater = np.zeros((self.numAgents, self.totalTime), dtype=float)
+        self.averageBacklog = np.zeros((self.numAgents, self.totalTime), dtype=int)
+
 
 
 
@@ -76,6 +78,8 @@ class ExperimentData(Mapping):
         costMoney = self.averageCostMoney[:, timeStart:totalTime]
         costCO2 = self.averageCostCO2[:, timeStart:totalTime]
         costWater = self.averageCostWater[:, timeStart:totalTime]
+        backlog = self.averageBacklog[:, timeStart:totalTime]
+
 
         # Stack and label
         dataRows = []
@@ -87,6 +91,9 @@ class ExperimentData(Mapping):
             dataRows.append([f"Firm {i} CostCO2"] + costCO2[i].tolist())
         for i in range(self.numAgents):
             dataRows.append([f"Firm {i} CostWater"] + costWater[i].tolist())
+        for i in range(self.numAgents):
+            dataRows.append([f"Firm {i} Backlog"] + backlog[i].tolist())
+
 
         # Combine all
         writtenData = [headerRow] + dataRows

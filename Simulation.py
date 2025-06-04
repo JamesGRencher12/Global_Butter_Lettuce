@@ -464,10 +464,11 @@ class Simulation:
                 trucks = int(math.ceil(demand / 38))
                 cost_per_truck_money = (self.miles_mexico * self.cpm_mexico) + (self.miles_us * self.cpm_us)
 
-                total_moneyCost = trucks * cost_per_truck_money
-
                 yield_per_acre = 30000 #An acre of farmland yields 30k lbs of butter lettuce annually.
                 acres_per_truck = 38000/30000 #A truck can holod 38k lbs of butter lettuce. (it runs out of space before weight carrying capacity)
+                fixed_costacre = 2000
+
+                total_moneyCost = trucks * cost_per_truck_money + (fixed_costacre*acres_per_truck*trucks)
 
                 #CO2 cost
                 co2_from_acres = acres_per_truck * 13889.13 #13889.13 is the pounds of CO2 produced by an acre of butter lettuce annually
@@ -721,7 +722,7 @@ class Simulation:
         """
         self.getData()
         # self.plotData(simNo)
-        return self._demandData, self._costMoneyData, self._costCO2Data, self._costWaterData
+        return self._demandData, self._costMoneyData, self._costCO2Data, self._costWaterData, self._backlogData
 
     def getData(self):
         """
@@ -754,7 +755,12 @@ class Simulation:
             costWaterList.append(costWaterData)
         self._costWaterData = np.array(costWaterList)
 
-        return self._demandData, self._costMoneyData, self._costCO2Data, self._costWaterData
+        backlogList = []
+        for agent in self.agentList:
+            backlogList.append(agent.sendData('Backlog'))
+        self._backlogData = np.array(backlogList)   # shape
+
+        return self._demandData, self._costMoneyData, self._costCO2Data, self._costWaterData, self._backlogData
 
     def plotData(self, simNo):
         """

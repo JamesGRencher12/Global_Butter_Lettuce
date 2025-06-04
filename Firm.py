@@ -266,6 +266,7 @@ class Firm:
         self._actualizedCostMoneyArray = np.zeros(self._totalTime, dtype=float)
         self._actualizedCostCO2Array   = np.zeros(self._totalTime, dtype=float)
         self._actualizedCostWaterArray = np.zeros(self._totalTime, dtype=float)
+        self._backlogArray = np.zeros(self._totalTime, dtype=int)
 
 
 
@@ -518,16 +519,28 @@ class Firm:
     
     def actualizeDemand(self, amount):
         """
-        Records the time period's demand information.
-
-        :param int amount:
-            The demand for the current time period.
-        :return:
+        Records the time period’s demand (total request) in ledger[:,17].  
+        If demand > FG on hand, record the unmet portion as backlog,
+        but still keep ledger[:,17]= the full 'amount' requested.
         """
-        self._actualizedDemandArray[self._timeIndex] += amount
-        self._ledger[self._timeIndex, 17] = amount  # actual_demand column
-        logging.debug(f"Firm {self._id}, t={self._timePeriod}, f=actualizeDemand():  Updated actualizedDemandArray and "
-                      f"Ledger to value {amount}")
+        idx = self._timeIndex
+
+        # 1) Always record the total incoming demand, regardless of FG
+        self._actualizedDemandArray[idx] = amount
+        self._ledger[idx, 17] = amount
+
+        # 2) Ship up to what you have in finished‐goods inventory
+        shipped = min(self._fgInventory, amount)
+        self._fgInventory -= shipped
+        backlog = amount - shipped
+
+        # 3) Record the backlog separately
+        self._backlogArray[idx] += backlog
+
+        logging.debug(
+            f"Firm {self._id}, t={self._timePeriod}: "
+            f"Demand={amount}, shipped={shipped}, backlog={backlog}, FG left={self._fgInventory}"
+        )
 
     def beginningOfDay(self):
         """
@@ -934,49 +947,78 @@ class Firm:
 
     def receiveWipOrder(self, poNumber):
         """
-        Intakes the WIP order into inventory, checks to see if the PO has been fulfilled
-
-        :param int poNumber:
-            Unique identifier for PO
+        Incoming WIP shipment: but refuse if (FG + existing WIP) ≥ some max.  Any refused units become 'supply‐backlog.'
         """
-        totalWipReceived = 0
-        warn = True
-        self.warningLoop(self.poList, "receiveWipOrder()")
+        idx = self._timeIndex
+
+        # define a “max combined inventory” threshold (you can set this per‐firm or pass it in via Configs)
+        # e.g. maxAllowed = self._desiredWipInventory + some FG buffer, or a fixed constant
+        maxAllowed = self._desiredWipInventory + 100  # example: up to (desired WIP + 100) total in WIP
+        shippedThisPeriod = 0
+        supply_refused = 0
+
         for po in self.poList:
             if po.id == poNumber:
-                self._wipInventory += po.fulfilledAmt
-                totalWipReceived += po.fulfilledAmt
-                po.customerClosed = True  # PO needs to be closed by both supplier and customer
-                warn = False
-        self._ledger[self._timeIndex, 2] += totalWipReceived  # total_wip_received column
-        self._ledger[self._timeIndex, 3] = self._wipInventory  # production_wip_inventory column
-        logging.debug(f"Firm {self._id}, t={self._timePeriod}, f=receiveWipOrder(): Received {totalWipReceived} WIP "
-                      f"product.")
-        self.logSupplyPo(poNumber, self._timeIndex)
-        if len(self.poList) == 0:
-            logging.warning(f"Firm {self._id}, t={self._timePeriod}, f=receiveWipOrder(): Trying to receive WIP order# "
-                            f"{poNumber} but internal PO list is empty.")
-        elif warn:
-            logging.warning(f"Firm {self._id}, t={self._timePeriod}, f=receiveWipOrder(): Trying to receive WIP order# "
-                            f"{poNumber} but that PO# cannot be found")
+                incoming = po.fulfilledAmt
+
+                # compute current inventory = WIP + FG
+                curInv = self._wipInventory + self._fgInventory
+                spaceLeft = max(0, maxAllowed - curInv)
+
+                if spaceLeft >= incoming:
+                    # accept full shipment
+                    self._wipInventory += incoming
+                    shippedThisPeriod += incoming
+                    po.customerClosed = True
+                else:
+                    # accept only what “fits,” reject the rest
+                    accepted = spaceLeft
+                    refused  = incoming - accepted
+                    if accepted > 0:
+                        self._wipInventory += accepted
+                        shippedThisPeriod += accepted
+                        # modify the PO so that upstream knows how much actually arrived:
+                        po.updatePO({'fulfilledAmt': accepted})
+                        po.customerClosed = True
+                    else:
+                        # no acceptance at all
+                        refused = incoming
+                        # keep po.customerClosed=False so that it remains “open” and can be retried later
+                    supply_refused += refused
+
+        # log what went into WIP:
+        self._ledger[idx, 2] += shippedThisPeriod       # total_wip_received
+        self._ledger[idx, 3] = self._wipInventory        # production_wip_inventory
+        if supply_refused > 0:
+            # record “supply backlog” in our same array (or use a separate array if you want)
+            self._backlogArray[idx] += supply_refused
+
+        logging.debug(
+            f"Firm {self._id}, t={self._timePeriod}, f=receiveWipOrder(): "
+            f"Accepted {shippedThisPeriod}, refused {supply_refused}, WIP now {self._wipInventory}"
+        )
+
+    # If we partially (or fully) refused, we leave the PO open so that the upstream firm
+    # knows “you still owe us {refused} units.”  We do NOT pop it from self.poList unless
+    # we want to force a re‐delivery.  (Alternatively, you could automatically re‐issue
+    # a new PO for the refused portion in the next period.)
+
 
     def resetFirm(self, demandMu):
         """
         Resets the firm to default values, in preparation for a new simulation.
-
-        :param int demandMu:
-            A parameter representing the average final customer demand in the simulation
-        :return:
         """
         # ~~~~~~~~~~~~~~~~
         self.setClassAttributes(demandMu)
         # This needs to be updated for the wholesaler class
         # ~~~~~~~~~~~~~~~~
         self._actualizedDemandArray = np.zeros(self._totalTime, dtype=int)
-
         self._actualizedCostMoneyArray = np.zeros(self._totalTime, dtype=float)
         self._actualizedCostCO2Array   = np.zeros(self._totalTime, dtype=float)
         self._actualizedCostWaterArray = np.zeros(self._totalTime, dtype=float)
+
+        # **reset backlog array as well**
+        self._backlogArray = np.zeros(self._totalTime, dtype=int)
 
         # alpha not reset
         self._closedCustomerPos = []
@@ -1055,6 +1097,8 @@ class Firm:
             return self._actualizedCostCO2Array
         elif option == 'CostWater':
             return self._actualizedCostWaterArray
+        elif option == 'Backlog':
+            return self._backlogArray
         else:
             message = f"Firm {self._id}, t={self._timePeriod}, f=sendData(): Unknown option chosen."
             logging.error(message)
