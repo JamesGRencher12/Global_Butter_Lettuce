@@ -722,7 +722,7 @@ class Simulation:
         """
         self.getData()
         # self.plotData(simNo)
-        return self._demandData, self._costMoneyData, self._costCO2Data, self._costWaterData, self._backlogData
+        return self._demandData, self._costMoneyData, self._costCO2Data, self._costWaterData, self._backlogData, self._electricityData
 
     def getData(self):
         """
@@ -759,6 +759,12 @@ class Simulation:
         for agent in self.agentList:
             backlogList.append(agent.sendData('Backlog'))
         self._backlogData = np.array(backlogList)   # shape
+
+        electricityList = []
+        for agent in self.agentList:
+            elecData = agent.sendData('Electricity')
+            electricityList.append(elecData)
+        self._electricityData = np.array(electricityList)
 
         return self._demandData, self._costMoneyData, self._costCO2Data, self._costWaterData, self._backlogData
 

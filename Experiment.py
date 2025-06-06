@@ -129,18 +129,24 @@ class Experiment(Mapping):
 
         backlogAccumulator   = np.zeros((self.experimentConfigs.numAgents,
                                           self.experimentConfigs.historyTime + self.experimentConfigs.runTime))
+        electricityAccumulator = np.zeros(
+            (self.experimentConfigs.numAgents,
+            self.experimentConfigs.historyTime + self.experimentConfigs.runTime),
+            dtype=float
+        )
 
         for i in range(self.experimentConfigs.numIterations):
             sim = Simulation()
             sim.initializeSim(testOption=False)
             sim.runSimulation()
 
-            demandData, costMoneyData, costCO2Data, costWaterData, backlogData = sim.processData(i)
+            demandData, costMoneyData, costCO2Data, costWaterData, backlogData, electricityData  = sim.processData(i)
 
             demandAccumulator    += demandData
             costMoneyAccumulator += costMoneyData
             costCO2Accumulator   += costCO2Data
             costWaterAccumulator += costWaterData
+            electricityAccumulator += electricityData
 
             # ACCUMULATE backlogs into backlogAccumulator
             backlogAccumulator   += backlogData
@@ -154,6 +160,7 @@ class Experiment(Mapping):
         self.experimentData.averageCostMoney = costMoneyAccumulator / self.experimentConfigs.numIterations
         self.experimentData.averageCostCO2   = costCO2Accumulator   / self.experimentConfigs.numIterations
         self.experimentData.averageCostWater = costWaterAccumulator / self.experimentConfigs.numIterations
+        self.experimentData.averageElectricity = electricityAccumulator / self.experimentConfigs.numIterations
 
         # *** Set average backlog ***
         self.experimentData.averageBacklog   = backlogAccumulator   / self.experimentConfigs.numIterations
@@ -178,7 +185,7 @@ class Experiment(Mapping):
         self.experimentData.averageCostMoney = costMoneyAccumulator / self.experimentConfigs.numIterations
         self.experimentData.averageCostCO2   = costCO2Accumulator / self.experimentConfigs.numIterations
         self.experimentData.averageCostWater = costWaterAccumulator / self.experimentConfigs.numIterations
-
+        self.experimentData.averageElectricity = electricityAccumulator / self.experimentConfigs.numIterations
 
         self.createCharts()
         self.experimentData.writeCsvData(self.experimentConfigs.historyTime + self.experimentConfigs.runTime,
@@ -190,9 +197,10 @@ class Experiment(Mapping):
         total_money = np.sum(data.averageCostMoney)
         total_co2   = np.sum(data.averageCostCO2)
         total_water = np.sum(data.averageCostWater)
+        total_electricity = np.sum(data.averageElectricity)
 
-        categories = ['Money ($)', 'CO₂ (lbs)', 'Water (gal)']
-        values     = [total_money, total_co2, total_water]
+        categories = ['Money ($)', 'CO₂ (lbs)', 'Water (gal)', 'Electricity (kWh)']
+        values     = [total_money, total_co2, total_water, total_electricity]
 
         plt.figure(figsize=(6,4))
         bars = plt.bar(categories, values, edgecolor='black')

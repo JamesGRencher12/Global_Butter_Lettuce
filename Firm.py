@@ -267,6 +267,8 @@ class Firm:
         self._actualizedCostCO2Array   = np.zeros(self._totalTime, dtype=float)
         self._actualizedCostWaterArray = np.zeros(self._totalTime, dtype=float)
         self._backlogArray = np.zeros(self._totalTime, dtype=int)
+        self._actualizedCostElectricityArray = np.zeros(self._totalTime, dtype=float)
+        self._cumulativeBacklogArray = np.zeros(self._totalTime, dtype=int)
 
 
 
@@ -519,28 +521,52 @@ class Firm:
     
     def actualizeDemand(self, amount):
         """
-        Records the time period’s demand (total request) in ledger[:,17].  
-        If demand > FG on hand, record the unmet portion as backlog,
-        but still keep ledger[:,17]= the full 'amount' requested.
+        Records the time period’s demand. If demand > FG on hand, record the unmet portion as backlog.
+        Charges a holding cost (both electricity and dollars) on the *total* unfulfilled inventory for each day.
         """
+
         idx = self._timeIndex
 
-        # 1) Always record the total incoming demand, regardless of FG
+        # 1) Always record incoming demand
         self._actualizedDemandArray[idx] = amount
         self._ledger[idx, 17] = amount
 
-        # 2) Ship up to what you have in finished‐goods inventory
+        # 2) Ship as much as possible out of FG inventory
         shipped = min(self._fgInventory, amount)
         self._fgInventory -= shipped
-        backlog = amount - shipped
+        new_backlog = amount - shipped
 
-        # 3) Record the backlog separately
-        self._backlogArray[idx] += backlog
+        # 3) Record “new backlog created today”
+        self._backlogArray[idx] += new_backlog
+
+        # 4) Compute “cumulative unfilled backlog”:
+        if idx == 0:
+            prev_unfilled = 0
+        else:
+            prev_unfilled = self._cumulativeBacklogArray[idx - 1]
+
+        total_unfilled = prev_unfilled + new_backlog
+        self._cumulativeBacklogArray[idx] = total_unfilled
+
+        # 5) Charge holding costs on *all* unfilled backlog held today:
+        #    a) Electricity: 39.6 kWh / 30,000 lb
+        #    b) Money:      $5.15  / 30,000 lb
+        if total_unfilled > 0:
+            kwh_per_unit     = 39.6 / 30000.0
+            electricity_cost = total_unfilled * kwh_per_unit
+            # If you might also add supply‐refused cost later in the same idx, do “+=”
+            self._actualizedCostElectricityArray[idx] += electricity_cost
+
+            money_per_unit  = 5.15 / 30000.0
+            holding_money   = total_unfilled * money_per_unit
+            self._actualizedCostMoneyArray[idx] += holding_money
 
         logging.debug(
             f"Firm {self._id}, t={self._timePeriod}: "
-            f"Demand={amount}, shipped={shipped}, backlog={backlog}, FG left={self._fgInventory}"
+            f"Demand={amount}, shipped={shipped}, new_backlog={new_backlog}, "
+            f"total_unfilled={total_unfilled}, FG left={self._fgInventory}"
         )
+
 
     def beginningOfDay(self):
         """
@@ -946,23 +972,23 @@ class Firm:
         self.actualizeDemand(amount)
 
     def receiveWipOrder(self, poNumber):
-        """
-        Incoming WIP shipment: but refuse if (FG + existing WIP) ≥ some max.  Any refused units become 'supply‐backlog.'
-        """
         idx = self._timeIndex
 
-        # define a “max combined inventory” threshold (you can set this per‐firm or pass it in via Configs)
-        # e.g. maxAllowed = self._desiredWipInventory + some FG buffer, or a fixed constant
-        maxAllowed = self._desiredWipInventory + 100  # example: up to (desired WIP + 100) total in WIP
+        maxAllowed       = self._desiredWipInventory + 100
         shippedThisPeriod = 0
-        supply_refused = 0
+        supply_refused    = 0
+
+        # Grab yesterday’s “unfilled backlog” to start with:
+        if idx == 0:
+            prev_unfilled = 0
+        else:
+            prev_unfilled = self._cumulativeBacklogArray[idx - 1]
+        self._cumulativeBacklogArray[idx] = prev_unfilled
 
         for po in self.poList:
             if po.id == poNumber:
                 incoming = po.fulfilledAmt
-
-                # compute current inventory = WIP + FG
-                curInv = self._wipInventory + self._fgInventory
+                curInv   = self._wipInventory + self._fgInventory
                 spaceLeft = max(0, maxAllowed - curInv)
 
                 if spaceLeft >= incoming:
@@ -970,33 +996,59 @@ class Firm:
                     self._wipInventory += incoming
                     shippedThisPeriod += incoming
                     po.customerClosed = True
+
+                    # reduce the unfilled backlog by “incoming” (because this WIP will become FG tomorrow)
+                    new_unfilled = max(0, prev_unfilled - incoming)
+                    self._cumulativeBacklogArray[idx] = new_unfilled
+
                 else:
-                    # accept only what “fits,” reject the rest
+                    # accept only what fits, reject the rest
                     accepted = spaceLeft
                     refused  = incoming - accepted
+
                     if accepted > 0:
                         self._wipInventory += accepted
                         shippedThisPeriod += accepted
-                        # modify the PO so that upstream knows how much actually arrived:
                         po.updatePO({'fulfilledAmt': accepted})
                         po.customerClosed = True
+
+                        # reduce unfilled backlog by “accepted”
+                        new_unfilled = max(0, prev_unfilled - accepted)
+                        self._cumulativeBacklogArray[idx] = new_unfilled
                     else:
-                        # no acceptance at all
-                        refused = incoming
-                        # keep po.customerClosed=False so that it remains “open” and can be retried later
+                        # no acceptance at all (so backlog stays the same as yesterday)
+                        self._cumulativeBacklogArray[idx] = prev_unfilled
+
                     supply_refused += refused
 
-        # log what went into WIP:
-        self._ledger[idx, 2] += shippedThisPeriod       # total_wip_received
+        # Now log WIP received into ledger
+        self._ledger[idx, 2] = shippedThisPeriod       # total_wip_received
         self._ledger[idx, 3] = self._wipInventory        # production_wip_inventory
+
+        # If you refused some WIP, that itself creates additional backlog from YOUR perspective:
         if supply_refused > 0:
-            # record “supply backlog” in our same array (or use a separate array if you want)
+            # record “new supply‐refusal backlog” separately
             self._backlogArray[idx] += supply_refused
+
+            # Increase the unfilled backlog by exactly supply_refused:
+            still_unfilled = self._cumulativeBacklogArray[idx] + supply_refused
+            self._cumulativeBacklogArray[idx] = still_unfilled
+
+            # Charge holding cost on that newly added portion as well (because it sits unfilled today)
+            kwh_per_unit     = 39.6 / 30000.0
+            extra_kwh        = supply_refused * kwh_per_unit
+            self._actualizedCostElectricityArray[idx] += extra_kwh
+
+            money_per_unit   = 5.15 / 30000.0
+            extra_money      = supply_refused * money_per_unit
+            self._actualizedCostMoneyArray[idx] += extra_money
 
         logging.debug(
             f"Firm {self._id}, t={self._timePeriod}, f=receiveWipOrder(): "
-            f"Accepted {shippedThisPeriod}, refused {supply_refused}, WIP now {self._wipInventory}"
+            f"Accepted {shippedThisPeriod}, refused {supply_refused}, "
+            f"WIP now {self._wipInventory}, unfilled backlog now {self._cumulativeBacklogArray[idx]}"
         )
+
 
     # If we partially (or fully) refused, we leave the PO open so that the upstream firm
     # knows “you still owe us {refused} units.”  We do NOT pop it from self.poList unless
@@ -1016,9 +1068,9 @@ class Firm:
         self._actualizedCostMoneyArray = np.zeros(self._totalTime, dtype=float)
         self._actualizedCostCO2Array   = np.zeros(self._totalTime, dtype=float)
         self._actualizedCostWaterArray = np.zeros(self._totalTime, dtype=float)
-
-        # **reset backlog array as well**
+        self._actualizedCostElectricityArray = np.zeros(self._totalTime, dtype=float)
         self._backlogArray = np.zeros(self._totalTime, dtype=int)
+        self._cumulativeBacklogArray = np.zeros(self._totalTime, dtype=int)
 
         # alpha not reset
         self._closedCustomerPos = []
@@ -1099,6 +1151,8 @@ class Firm:
             return self._actualizedCostWaterArray
         elif option == 'Backlog':
             return self._backlogArray
+        elif option == 'Electricity':
+            return self._actualizedCostElectricityArray
         else:
             message = f"Firm {self._id}, t={self._timePeriod}, f=sendData(): Unknown option chosen."
             logging.error(message)
