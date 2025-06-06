@@ -463,13 +463,13 @@ class Simulation:
 
                 trucks = int(math.ceil(demand / 38))
                 cost_per_truck_money = (self.miles_mexico * self.cpm_mexico) + (self.miles_us * self.cpm_us)
-
+                markup_cost = (demand / 1.0) * 192.55
                 yield_per_acre = 30000 #An acre of farmland yields 30k lbs of butter lettuce annually.
                 acres_per_truck = 38000/30000 #A truck can holod 38k lbs of butter lettuce. (it runs out of space before weight carrying capacity)
                 fixed_costacre = 2000
 
                 total_moneyCost = trucks * cost_per_truck_money + (fixed_costacre*acres_per_truck*trucks)
-
+                total_moneyCost += markup_cost
                 #CO2 cost
                 co2_from_acres = acres_per_truck * 13889.13 #13889.13 is the pounds of CO2 produced by an acre of butter lettuce annually
                 co2_from_travel = (Simulation.miles_mexico + Simulation.miles_us)*6*22.4 #22.4 lbs c02/mile, 6mpg

@@ -101,7 +101,7 @@ class Configs(Mapping):
                  alphaOption='Uniform',
                  alphaValue=0.1,
                  alphaValueList=None,
-                 demandMu=100, #This is how many thousands of pounds of butter lettuce are brought into the US annually
+                 demandMu=304, #This is how many thousands of pounds of butter lettuce are brought into the US annually
                  demandStd=1,
                  historyTime=10,
                  numIterations=100,
