@@ -427,7 +427,9 @@ class Configs(Mapping):
         self.cpm_mexico = 1.03                # USD cost per mile in Mexico
         self.emission_per_acre = 4107         # lbs CO2 per acre. (right now this number is made up)
         self.emission_per_mile = 3.742       # lbs CO2 per mile
-        self.water_per_acre = 652,000          # gallons per acre annually. (this needs to be adjusted to account per truck somehow)
+        self.water_per_acre = 652000          # gallons per acre annually. (this needs to be adjusted to account per truck somehow)
+        self.kwh_per_pallet_per_day = 0.914
+        self.pallet_weight_lb = 1540
         logging.info("Set fixed cost/environment variables: cost_per_acre=5000, cpm_us=0.6, cpm_mexico=0.4, emission_per_acre=30, emission_per_mile=0.12, water_per_acre=1500")
     # def resetDefault(self):
     #     """

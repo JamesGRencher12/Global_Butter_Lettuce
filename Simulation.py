@@ -237,7 +237,8 @@ class Simulation:
         cls.cpm_us         = configs.cpm_us
         cls.emission_per_acre = configs.emission_per_acre
         cls.emission_per_mile = configs.emission_per_mile
-
+        cls.kwh_per_pallet_per_day = configs.kwh_per_pallet_per_day
+        cls.pallet_weight_lb       = configs.pallet_weight_lb
 
     def __init__(self):
         #self._id = next(self.idIter)  # Creates a new unique identifier for the simulation

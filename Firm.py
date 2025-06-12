@@ -4,6 +4,8 @@ import logging
 import pandas as pd
 import random
 from scipy.optimize import minimize, Bounds
+import math
+from Simulation import Simulation
 
 import PO
 
@@ -269,7 +271,7 @@ class Firm:
         self._backlogArray = np.zeros(self._totalTime, dtype=int)
         self._actualizedCostElectricityArray = np.zeros(self._totalTime, dtype=float)
         self._cumulativeBacklogArray = np.zeros(self._totalTime, dtype=int)
-
+        
 
 
         logging.debug(f"Firm {self._id}, t=SETUP: Established actualizedDemandArray of type "
@@ -527,19 +529,15 @@ class Firm:
 
         idx = self._timeIndex
 
-        # 1) Always record incoming demand
         self._actualizedDemandArray[idx] = amount
         self._ledger[idx, 17] = amount
 
-        # 2) Ship as much as possible out of FG inventory
         shipped = min(self._fgInventory, amount)
         self._fgInventory -= shipped
         new_backlog = amount - shipped
 
-        # 3) Record “new backlog created today”
         self._backlogArray[idx] += new_backlog
 
-        # 4) Compute “cumulative unfilled backlog”:
         if idx == 0:
             prev_unfilled = 0
         else:
@@ -548,18 +546,12 @@ class Firm:
         total_unfilled = prev_unfilled + new_backlog
         self._cumulativeBacklogArray[idx] = total_unfilled
 
-        # 5) Charge holding costs on *all* unfilled backlog held today:
-        #    a) Electricity: 39.6 kWh / 30,000 lb
-        #    b) Money:      $5.15  / 30,000 lb
-        if total_unfilled > 0:
-            kwh_per_unit     = 39.6 / 30000.0
-            electricity_cost = total_unfilled * kwh_per_unit
-            # If you might also add supply‐refused cost later in the same idx, do “+=”
-            self._actualizedCostElectricityArray[idx] += electricity_cost
+        if total_unfilled > 0 :
+            num_pallets = math.ceil(total_unfilled/Simulation.pallet_weight_lb)
+            electr_cost = (num_pallets * Simulation.kwh_oer_pallet_per_day)
 
-            money_per_unit  = 5.15 / 30000.0
-            holding_money   = total_unfilled * money_per_unit
-            self._actualizedCostMoneyArray[idx] += holding_money
+            self._actualizedCostMoneyArray[idx] += electr_cost
+            
 
         logging.debug(
             f"Firm {self._id}, t={self._timePeriod}: "
