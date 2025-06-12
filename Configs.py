@@ -117,8 +117,8 @@ class Configs(Mapping):
                  numTimePeriodsForCalc=5,
                  riskTolerance=0.5,
                  acreage = 500, #This number is completely made up
-                 miles_mexico = 700,
-                 miles_us = 1360,
+                 miles_mexico = 624,
+                 miles_us = 1483,
                  border_delay = None,
                  shipment_size = None,
                  storage_time = None
@@ -422,12 +422,12 @@ class Configs(Mapping):
             logging.error(message)
             raise Exception(message)
         
-        self.cost_per_acre = 5000            # USD per acre of lettuce farming
-        self.cpm_us = 2.73                    # USD cost per mile in the US
-        self.cpm_mexico = 2.36                # USD cost per mile in Mexico
-        self.emission_per_acre = 30         # lbs CO2 per acre. (right now this number is made up)
-        self.emission_per_mile = 3.73333       # lbs CO2 per mile
-        self.water_per_acre = 792,000          # gallons per acre annually. (this needs to be adjusted to account per truck somehow)
+        self.cost_per_acre = 6975           # USD per acre of lettuce farming
+        self.cpm_us = 1.24                    # USD cost per mile in the US
+        self.cpm_mexico = 1.03                # USD cost per mile in Mexico
+        self.emission_per_acre = 4107         # lbs CO2 per acre. (right now this number is made up)
+        self.emission_per_mile = 3.742       # lbs CO2 per mile
+        self.water_per_acre = 652,000          # gallons per acre annually. (this needs to be adjusted to account per truck somehow)
         logging.info("Set fixed cost/environment variables: cost_per_acre=5000, cpm_us=0.6, cpm_mexico=0.4, emission_per_acre=30, emission_per_mile=0.12, water_per_acre=1500")
     # def resetDefault(self):
     #     """

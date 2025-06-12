@@ -235,6 +235,8 @@ class Simulation:
         cls.miles_us       = configs.miles_us
         cls.cpm_mexico     = configs.cpm_mexico
         cls.cpm_us         = configs.cpm_us
+        cls.emission_per_acre = configs.emission_per_acre
+        cls.emission_per_mile = configs.emission_per_mile
 
 
     def __init__(self):
@@ -471,8 +473,12 @@ class Simulation:
                 total_moneyCost = trucks * cost_per_truck_money + (fixed_costacre*acres_per_truck*trucks)
                 total_moneyCost += markup_cost
                 #CO2 cost
-                co2_from_acres = acres_per_truck * 4107 #4107 is the pounds of CO2 produced by an acre of butter lettuce annually
-                co2_from_travel = (Simulation.miles_mexico + Simulation.miles_us)*6*22.4 #22.4 lbs c02/mile, 6mpg
+                co2_from_acres = acres_per_truck * Simulation.emission_per_acre #4107 is the pounds of CO2 produced by an acre of butter lettuce annually
+                total_miles = Simulation.miles_mexico + Simulation.miles_us
+                co2_from_travel = total_miles * Simulation.emission_per_mile
+
+
+
 
                 total_co2Cost = trucks*(co2_from_acres+co2_from_travel)
 
